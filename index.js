@@ -1,3 +1,6 @@
+// Загружаем параметры подключения из локального .env перед созданием пула.
+require('dotenv/config');
+
 // Express понадобится для HTTP-маршрутов создания и чтения постов.
 const express = require('express');
 
@@ -8,12 +11,13 @@ const app = express();
 // Разбираем JSON до маршрутов, чтобы будущий обработчик создания поста получил данные в req.body.
 app.use(express.json());
 
-// Пул позволяет обработчикам переиспользовать подключения. Пароль pg читает из PGPASSWORD.
+// Пул позволяет обработчикам переиспользовать подключения.
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'node_api',
-  port: 5432,
+  host: process.env.PGHOST || 'localhost',
+  port: process.env.PGPORT,
+  database: process.env.PGDATABASE || 'node_api',
+  user: process.env.PGUSER || 'postgres',
+  password: process.env.PGPASSWORD,
 });
 
 // При запуске проверяем доступность базы. pool.connect() выдаёт клиент,
