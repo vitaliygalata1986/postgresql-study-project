@@ -8,12 +8,18 @@ const app = express();
 // Разбираем JSON до маршрутов, чтобы будущий обработчик создания поста получил данные в req.body.
 app.use(express.json());
 
-// Пул переиспользует подключения. pg читает настройки из PGHOST, PGPORT, PGDATABASE, PGUSER и PGPASSWORD.
-const pool = new Pool();
+// Пул позволяет обработчикам переиспользовать подключения. Пароль pg читает из PGPASSWORD.
+const pool = new Pool({
+  user: 'postgres',
+  host: 'localhost',
+  database: 'node_api',
+  port: 5432,
+});
 
-// Проверяем, что PostgreSQL принимает запросы. pool.query сам возвращает клиент в пул.
+// При запуске проверяем доступность базы. pool.connect() выдаёт клиент,
+// который нужно возвращать в пул через client.release().
 pool
-  .query('SELECT 1')
+  .connect()
   .then(() => console.log('Connected to PostgreSQL'))
   .catch((err) => console.error('Error connecting to PostgreSQL', err));
 
