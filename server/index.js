@@ -5,7 +5,6 @@ const express = require('express');
 const { Pool } = require('pg');
 
 const app = express();
-const postFields = ['title', 'anons', 'full_text'];
 
 // POST и PATCH принимают JSON и данные обычной HTML-формы.
 app.use(express.json());
@@ -83,20 +82,20 @@ app.patch('/posts/:id', async (req, res) => {
     return res.status(400).json({ error });
   }
 
-  const fields = postFields.filter((field) => Object.hasOwn(req.body, field));
-  if (fields.length === 0 || fields.length !== Object.keys(req.body).length) {
-    return res.status(400).json({ error: 'Provide only title, anons or full_text to update' });
+  const { title, anons, full_text } = req.body;
+  if (title === undefined && anons === undefined && full_text === undefined) {
+    return res.status(400).json({ error: 'Provide title, anons or full_text to update' });
   }
 
-  // Берём имена столбцов из фиксированного списка, а значения передаём параметрами SQL.
-  // Обновляем только переданные поля, чтобы сохранить остальные даже при одновременных запросах.
-  const assignments = fields.map((field, index) => `${field} = $${index + 1}`);
-  const values = fields.map((field) => req.body[field]);
-  values.push(req.params.id);
-
+  // CASE сохраняет пропущенные поля и позволяет очистить их явным null.
   const result = await pool.query(
-    `UPDATE posts SET ${assignments.join(', ')} WHERE id = $${values.length} RETURNING *`,
-    values,
+    `UPDATE posts
+     SET title = COALESCE($2, title),
+         anons = CASE WHEN $3 THEN $4 ELSE anons END,
+         full_text = CASE WHEN $5 THEN $6 ELSE full_text END
+     WHERE id = $1
+     RETURNING *`,
+    [req.params.id, title, anons !== undefined, anons, full_text !== undefined, full_text],
   );
   if (result.rowCount === 0) {
     return res.status(404).json({ error: 'Post not found' });
