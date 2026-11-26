@@ -2,7 +2,8 @@
 
 ## Structure
 
-- `index.js` is the CommonJS entry point. It configures Express, checks the PostgreSQL connection, and defines the post routes.
+- `index.js` is the CommonJS entry point. It configures Express, checks the PostgreSQL connection, and mounts the post router.
+- `routes/posts.js` defines the post routes and uses the PostgreSQL pool from `index.js`.
 - `package.json` declares server dependencies and scripts. Keep `package-lock.json` in sync when dependencies change.
 - `.env.example` documents the PostgreSQL connection settings. Keep actual credentials in the local `.env` file.
 

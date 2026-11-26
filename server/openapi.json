@@ -37,7 +37,7 @@
         "summary": "Создать пост",
         "requestBody": {
           "required": true,
-          "description": "Ограничение тела запроса — 100 КиБ. Пустая строка в title допустима. Пропущенные anons и full_text сохраняются как NULL.",
+          "description": "Ограничение тела запроса — 100 КиБ. Поле title должно быть строкой с хотя бы одним непробельным символом и сохраняется в исходном виде. Пропущенные anons и full_text сохраняются как NULL.",
           "content": {
             "application/json": {
               "schema": {
@@ -46,7 +46,7 @@
                   {
                     "required": ["title"],
                     "properties": {
-                      "title": { "type": ["string", "number", "boolean", "object", "array"] }
+                      "title": { "$ref": "#/components/schemas/PostTitle" }
                     }
                   }
                 ]
@@ -79,15 +79,7 @@
           "400": { "$ref": "#/components/responses/InvalidBody" },
           "413": { "$ref": "#/components/responses/BodyTooLarge" },
           "415": { "$ref": "#/components/responses/UnsupportedEncoding" },
-          "500": {
-            "description": "Тело запроса отсутствует либо произошла ошибка базы данных. Отсутствующий или равный null title нарушает ограничение NOT NULL.",
-            "content": {
-              "text/html": {
-                "schema": { "type": "string" },
-                "example": "Error in data:"
-              }
-            }
-          }
+          "500": { "$ref": "#/components/responses/DataError" }
         }
       }
     },
@@ -105,7 +97,7 @@
       "patch": {
         "operationId": "updatePost",
         "summary": "Обновить поля поста",
-        "description": "Пропущенные поля и поля со значением null сохраняют прежние значения. Без переданных полей или при отсутствии поста с указанным id возвращается 200, а данные остаются прежними.",
+        "description": "Пропущенные поля и поля со значением null сохраняют прежние значения. Новый title должен быть строкой с хотя бы одним непробельным символом и сохраняется в исходном виде. Без переданных полей или при отсутствии поста с указанным id возвращается 200, а данные остаются прежними.",
         "requestBody": {
           "description": "Передайте поля для изменения. Ограничение тела запроса — 100 КиБ.",
           "content": {
@@ -143,13 +135,20 @@
       "delete": {
         "operationId": "deletePost",
         "summary": "Удалить пост",
-        "description": "Запрос возвращает 200 и в том случае, если поста с указанным id уже нет.",
         "responses": {
           "200": {
-            "description": "Запрос на удаление выполнен.",
+            "description": "Пост удалён.",
             "content": {
               "text/html": {
                 "schema": { "type": "string", "const": "Post deleted successfully" }
+              }
+            }
+          },
+          "404": {
+            "description": "Пост с указанным id отсутствует.",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string", "const": "Пост с таким ID не существует" }
               }
             }
           },
@@ -172,9 +171,14 @@
       },
       "PostJsonFields": {
         "type": "object",
-        "description": "Дополнительные поля игнорируются. Драйвер PostgreSQL преобразует числа, логические значения, объекты и массивы в текст для столбцов TEXT.",
+        "description": "Дополнительные поля игнорируются. Драйвер PostgreSQL преобразует числа, логические значения, объекты и массивы в текст для anons и full_text.",
         "properties": {
-          "title": { "$ref": "#/components/schemas/PostJsonValue" },
+          "title": {
+            "anyOf": [
+              { "$ref": "#/components/schemas/PostTitle" },
+              { "type": "null" }
+            ]
+          },
           "anons": { "$ref": "#/components/schemas/PostJsonValue" },
           "full_text": { "$ref": "#/components/schemas/PostJsonValue" }
         }
@@ -182,11 +186,15 @@
       "PostJsonValue": {
         "type": ["string", "number", "boolean", "object", "array", "null"]
       },
+      "PostTitle": {
+        "type": "string",
+        "pattern": "\\S"
+      },
       "PostFormFields": {
         "type": "object",
         "description": "Поля обычной HTML-формы передаются строками. Дополнительные поля игнорируются.",
         "properties": {
-          "title": { "type": "string" },
+          "title": { "$ref": "#/components/schemas/PostTitle" },
           "anons": { "type": "string" },
           "full_text": { "type": "string" }
         }
@@ -202,8 +210,11 @@
         }
       },
       "InvalidBody": {
-        "description": "Express не смог разобрать тело запроса, например из-за синтаксической ошибки в JSON.",
+        "description": "Express не смог разобрать тело запроса или заголовок не соответствует требованиям операции.",
         "content": {
+          "text/plain": {
+            "schema": { "type": "string", "const": "Укажите заголовок поста" }
+          },
           "text/html": {
             "schema": { "type": "string" }
           }

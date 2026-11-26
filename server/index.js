@@ -1,17 +1,25 @@
-// Загружаем параметры подключения из локального .env перед созданием пула.
+// dotenv загружает значения из .env в process.env до того, как мы прочитаем настройки PostgreSQL.
+// По умолчанию dotenv сохраняет значения переменных, уже заданных в окружении.
 require('dotenv/config');
 
 const express = require('express');
 
 const { Pool } = require('pg');
+// Из routes/posts.js импортируем функцию, которая создаёт роутер с переданным ей пулом.
+const createPostsRouter = require('./routes/posts');
 
+// На этом объекте регистрируем обработчики запросов и затем запускаем HTTP-сервер.
 const app = express();
 
-// Разбираем JSON и данные HTML-форм до маршрутов, чтобы POST и PATCH получили req.body.
+// Express выполняет промежуточные обработчики в порядке регистрации.
+// Сначала разбираем JSON и данные HTML-форм по Content-Type, чтобы маршруты получили req.body.
 app.use(express.json());
+// extended: true позволяет разобрать вложенные поля формы, например post[title].
 app.use(express.urlencoded({ extended: true }));
 
-// Пул позволяет обработчикам переиспользовать подключения.
+// Один пул обслуживает все маршруты постов. pool.query() берёт соединение на время запроса
+// к базе и возвращает его в пул, чтобы следующий обработчик мог его использовать.
+// Если PGPORT не задан, pg использует порт 5432. Пароль читаем из PGPASSWORD.
 const pool = new Pool({
   host: process.env.PGHOST || 'localhost',
   port: process.env.PGPORT,
@@ -20,66 +28,21 @@ const pool = new Pool({
   password: process.env.PGPASSWORD,
 });
 
-// При запуске проверяем доступность PostgreSQL. pool.connect() занимает клиент до client.release().
+// При запуске пытаемся получить соединение с PostgreSQL и записываем результат в консоль.
+// pool.connect() выдаёт клиент, который нужно вернуть через client.release().
+// Здесь клиент остаётся занятым, потому что обработчик .then() только пишет в консоль.
 pool
   .connect()
   .then(() => console.log('Connected to PostgreSQL'))
   .catch((err) => console.error('Error connecting to PostgreSQL', err));
 
-app.get('/', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM posts ORDER BY id DESC');
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).send('Error in data:', err);
-  }
-});
+// При запуске вызываем createPostsRouter(pool) и получаем роутер с маршрутами постов.
+// app.use подключает этот роутер без префикса. Роутер выбирает обработчик по методу и пути
+// запроса, например GET / или POST /posts/add, уже после разбора тела запроса.
+app.use(createPostsRouter(pool));
 
-app.post('/posts/add', async (req, res) => {
-  const { title, anons, full_text } = req.body;
-  try {
-    await pool.query(
-      'INSERT INTO posts (title, anons, full_text) VALUES ($1, $2, $3)',
-      [title, anons, full_text],
-    );
-    const result = await pool.query('SELECT * FROM posts ORDER BY id DESC');
-    res.send('Post added successfully');
-  } catch (err) {
-    res.status(500).send('Error in data:', err);
-  }
-});
-
-app.patch('/posts/:id', async (req, res) => {
-  const { id } = req.params;
-  const { title, anons, full_text } = req.body ?? {};
-
-  try {
-    // pg передаёт пропущенные поля как NULL. При NULL в параметре COALESCE берёт значение из базы.
-    await pool.query(
-      `UPDATE posts
-       SET title = COALESCE($1, title),
-           anons = COALESCE($2, anons),
-           full_text = COALESCE($3, full_text)
-       WHERE id = $4`,
-      [title, anons, full_text, id],
-    );
-    res.send('Post updated successfully');
-  } catch {
-    res.status(500).send('Error updating post');
-  }
-});
-
-app.delete('/posts/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    await pool.query('DELETE FROM posts WHERE id = $1', [id]);
-    res.send('Post deleted successfully');
-  } catch (err) {
-    res.status(500).send('Error in data:', err);
-  }
-});
-
-// HTTP-сервер запускается независимо от результата проверки PostgreSQL.
+// Начинаем принимать HTTP-запросы на порту 3000, не дожидаясь проверки PostgreSQL.
+// Сообщение ниже означает, что порт открыт. Результат подключения к базе выводится отдельно.
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
 });
