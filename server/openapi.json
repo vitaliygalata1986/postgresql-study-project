@@ -1,0 +1,230 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "API постов",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Локальный сервер Express"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "listPosts",
+        "summary": "Получить список постов",
+        "responses": {
+          "200": {
+            "description": "Посты в порядке убывания id. Если в таблице нет записей, возвращается пустой массив.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Post" }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/DataError" }
+        }
+      }
+    },
+    "/posts/add": {
+      "post": {
+        "operationId": "createPost",
+        "summary": "Создать пост",
+        "requestBody": {
+          "required": true,
+          "description": "Ограничение тела запроса — 100 КиБ. Пустая строка в title допустима. Пропущенные anons и full_text сохраняются как NULL.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  { "$ref": "#/components/schemas/PostJsonFields" },
+                  {
+                    "required": ["title"],
+                    "properties": {
+                      "title": { "type": ["string", "number", "boolean", "object", "array"] }
+                    }
+                  }
+                ]
+              },
+              "example": {
+                "title": "Первый пост",
+                "anons": "Краткое описание",
+                "full_text": "Полный текст поста"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "allOf": [
+                  { "$ref": "#/components/schemas/PostFormFields" },
+                  { "required": ["title"] }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Пост создан.",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string", "const": "Post added successfully" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/InvalidBody" },
+          "413": { "$ref": "#/components/responses/BodyTooLarge" },
+          "415": { "$ref": "#/components/responses/UnsupportedEncoding" },
+          "500": {
+            "description": "Тело запроса отсутствует либо произошла ошибка базы данных. Отсутствующий или равный null title нарушает ограничение NOT NULL.",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" },
+                "example": "Error in data:"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/posts/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Идентификатор поста в PostgreSQL. Значение, которое PostgreSQL не может преобразовать в INTEGER, приводит к ответу 500.",
+          "schema": { "type": "integer", "format": "int32", "minimum": -2147483648, "maximum": 2147483647 },
+          "example": 1
+        }
+      ],
+      "patch": {
+        "operationId": "updatePost",
+        "summary": "Обновить поля поста",
+        "description": "Пропущенные поля и поля со значением null сохраняют прежние значения. Без переданных полей или при отсутствии поста с указанным id возвращается 200, а данные остаются прежними.",
+        "requestBody": {
+          "description": "Передайте поля для изменения. Ограничение тела запроса — 100 КиБ.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PostJsonFields" },
+              "example": { "title": "Новый заголовок" }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": { "$ref": "#/components/schemas/PostFormFields" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Запрос на обновление выполнен.",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string", "const": "Post updated successfully" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/InvalidBody" },
+          "413": { "$ref": "#/components/responses/BodyTooLarge" },
+          "415": { "$ref": "#/components/responses/UnsupportedEncoding" },
+          "500": {
+            "description": "Ошибка выполнения запроса на обновление в PostgreSQL, в том числе при некорректном id.",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string", "const": "Error updating post" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deletePost",
+        "summary": "Удалить пост",
+        "description": "Запрос возвращает 200 и в том случае, если поста с указанным id уже нет.",
+        "responses": {
+          "200": {
+            "description": "Запрос на удаление выполнен.",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string", "const": "Post deleted successfully" }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/DataError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Post": {
+        "type": "object",
+        "required": ["id", "title", "anons", "full_text"],
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "title": { "type": "string" },
+          "anons": { "type": ["string", "null"] },
+          "full_text": { "type": ["string", "null"] }
+        }
+      },
+      "PostJsonFields": {
+        "type": "object",
+        "description": "Дополнительные поля игнорируются. Драйвер PostgreSQL преобразует числа, логические значения, объекты и массивы в текст для столбцов TEXT.",
+        "properties": {
+          "title": { "$ref": "#/components/schemas/PostJsonValue" },
+          "anons": { "$ref": "#/components/schemas/PostJsonValue" },
+          "full_text": { "$ref": "#/components/schemas/PostJsonValue" }
+        }
+      },
+      "PostJsonValue": {
+        "type": ["string", "number", "boolean", "object", "array", "null"]
+      },
+      "PostFormFields": {
+        "type": "object",
+        "description": "Поля обычной HTML-формы передаются строками. Дополнительные поля игнорируются.",
+        "properties": {
+          "title": { "type": "string" },
+          "anons": { "type": "string" },
+          "full_text": { "type": "string" }
+        }
+      }
+    },
+    "responses": {
+      "DataError": {
+        "description": "Ошибка запроса к PostgreSQL.",
+        "content": {
+          "text/html": {
+            "schema": { "type": "string", "const": "Error in data:" }
+          }
+        }
+      },
+      "InvalidBody": {
+        "description": "Express не смог разобрать тело запроса, например из-за синтаксической ошибки в JSON.",
+        "content": {
+          "text/html": {
+            "schema": { "type": "string" }
+          }
+        }
+      },
+      "BodyTooLarge": {
+        "description": "Превышен лимит размера тела запроса или количества параметров формы.",
+        "content": {
+          "text/html": {
+            "schema": { "type": "string" }
+          }
+        }
+      },
+      "UnsupportedEncoding": {
+        "description": "Express не поддерживает переданную кодировку символов или сжатия тела запроса.",
+        "content": {
+          "text/html": {
+            "schema": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
