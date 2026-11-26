@@ -9,6 +9,10 @@ This repository is organized into two separate projects:
 
 Read the applicable directory guide before changing either project. Run commands from the directory specified by that guide.
 
+## API Documentation
+
+When adding, changing, or removing Express API routes or changing their contracts, use the [express-openapi skill](.agents/skills/express-openapi/SKILL.md) to update the [OpenAPI specification](server/openapi.json). Follow the verification steps in [server/AGENTS.md](server/AGENTS.md#development-and-testing).
+
 ## PostgreSQL Study Notes
 
 - Keep the SQL and `psql` study notes at the repository root. Exclude LibreOffice lock files (`.~lock.*#`) from changes.

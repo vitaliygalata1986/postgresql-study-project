@@ -1,0 +1,3 @@
+interface:
+  display_name: "Express OpenAPI"
+  short_description: "Keep Express routes and OpenAPI docs in sync"
