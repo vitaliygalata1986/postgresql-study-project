@@ -5,7 +5,7 @@
 This repository is organized into two separate projects:
 
 - `server/` contains the Express API and PostgreSQL integration. See [server/AGENTS.md](server/AGENTS.md) for its structure, commands, and conventions.
-- `client/` is reserved for the future web application. See [client/AGENTS.md](client/AGENTS.md) for its scope and conventions.
+- `client/` contains the React and Vite web application. See [client/AGENTS.md](client/AGENTS.md) for its commands and conventions.
 
 Read the applicable directory guide before changing either project. Run commands from the directory specified by that guide.
 
