@@ -1,31 +1,19 @@
-async function request(path, { method = 'GET', data, signal } = {}) {
-  const options = { method, signal };
-  if (data !== undefined) {
-    options.headers = { 'Content-Type': 'application/json' };
-    options.body = JSON.stringify(data);
-  }
-
-  let response;
-  try {
-    response = await fetch(`/api${path}`, options);
-  } catch (error) {
-    throw new Error('Не удалось подключиться к API постов.', { cause: error });
-  }
+async function request(path, options) {
+  const response = await fetch(`/api${path}`, options);
 
   if (!response.ok) {
     const isPlainText = response.headers.get('content-type')?.startsWith('text/plain');
-    const message = isPlainText ? (await response.text()).trim() : '';
-    throw new Error(message || `Ошибка запроса к API (HTTP ${response.status}).`);
+    const message = isPlainText ? await response.text() : '';
+    throw new Error(message || `Ошибка API (HTTP ${response.status}).`);
   }
 
   return response;
 }
 
-/** Получает список постов в порядке, заданном сервером. */
-export async function getPosts(signal) {
-  const response = await request('/', { signal });
-  const posts = await response.json().catch(() => null);
-
+/** Загружает список постов с сервера. */
+export async function getPosts() {
+  const response = await request('/');
+  const posts = await response.json();
   if (!Array.isArray(posts)) {
     throw new Error('API вернул некорректный список постов.');
   }
@@ -33,17 +21,25 @@ export async function getPosts(signal) {
   return posts;
 }
 
-/** Создаёт пост и ожидает подтверждение от сервера. */
+/** Сохраняет новый пост и проверяет статус ответа API. */
 export async function createPost(post) {
-  await request('/posts/add', { method: 'POST', data: post });
+  await request('/posts/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(post),
+  });
 }
 
-/** Обновляет переданные поля поста с указанным id. */
+/** Отправляет изменённые поля поста. */
 export async function updatePost(id, changes) {
-  await request(`/posts/${id}`, { method: 'PATCH', data: changes });
+  await request(`/posts/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(changes),
+  });
 }
 
-/** Удаляет пост с указанным id и ожидает подтверждение от сервера. */
+/** Удаляет пост с указанным id. */
 export async function deletePost(id) {
   await request(`/posts/${id}`, { method: 'DELETE' });
 }
