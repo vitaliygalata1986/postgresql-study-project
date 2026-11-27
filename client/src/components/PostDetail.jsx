@@ -7,6 +7,7 @@ export default function PostDetail({ post, onSaved, disabled }) {
   const [changes, setChanges] = useState(null);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const isDisabled = disabled || isSaving;
 
   function handleEdit() {
     setError('');
@@ -63,9 +64,9 @@ export default function PostDetail({ post, onSaved, disabled }) {
       {error && <p className="error" role="alert">{error}</p>}
       {changes ? (
         <form className="edit-post" onChange={handleChange} onSubmit={handleUpdate} aria-busy={isSaving}>
-          <PostFields post={post} disabled={disabled || isSaving} />
+          <PostFields post={post} disabled={isDisabled} />
           <div className="edit-post-actions">
-            <button type="submit" disabled={disabled || isSaving}>
+            <button type="submit" disabled={isDisabled}>
               {isSaving ? 'Сохранение…' : 'Сохранить'}
             </button>
             <button type="button" onClick={handleCancel} disabled={isSaving}>
@@ -82,7 +83,7 @@ export default function PostDetail({ post, onSaved, disabled }) {
               className="post-edit"
               aria-label="Редактировать пост"
               title="Редактировать пост"
-              disabled={disabled || isSaving}
+              disabled={isDisabled}
             >
               <svg
                 width="16"
@@ -105,7 +106,7 @@ export default function PostDetail({ post, onSaved, disabled }) {
               className="post-delete"
               aria-label="Удалить пост"
               title="Удалить пост"
-              disabled={disabled || isSaving}
+              disabled={isDisabled}
             >
               X
             </button>

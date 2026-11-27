@@ -6,6 +6,7 @@ import PostFields from './PostFields';
 export default function PostForm({ onSaved, disabled }) {
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const isDisabled = disabled || isSaving;
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -28,9 +29,9 @@ export default function PostForm({ onSaved, disabled }) {
   return (
     <form className="add-post" onSubmit={handleSubmit} aria-busy={isSaving}>
       <h2>Новый пост</h2>
-      <PostFields disabled={disabled || isSaving} />
+      <PostFields disabled={isDisabled} />
       {error && <p className="error" role="alert">{error}</p>}
-      <button type="submit" disabled={disabled || isSaving}>
+      <button type="submit" disabled={isDisabled}>
         {isSaving ? 'Добавление…' : 'Добавить'}
       </button>
     </form>

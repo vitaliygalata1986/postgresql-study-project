@@ -5,34 +5,33 @@ import PostForm from './PostForm';
 
 /** Показывает форму и загружает список постов из API. */
 export default function Home() {
-  const [posts, setPosts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [list, setList] = useState({ posts: [], isLoading: true, error: '' });
   const [loadVersion, setLoadVersion] = useState(0);
+  const { posts, isLoading, error } = list;
 
   useEffect(() => {
-    let current = true;
+    let isCurrent = true;
 
     getPosts()
       .then((posts) => {
-        if (current) setPosts(posts);
+        if (isCurrent) {
+          setList({ posts, isLoading: false, error: '' });
+        }
       })
       .catch((error) => {
-        if (current) setError(error.message);
-      })
-      .finally(() => {
-        if (current) setIsLoading(false);
+        if (isCurrent) {
+          setList((list) => ({ ...list, isLoading: false, error: error.message }));
+        }
       });
 
     // Ответ предыдущей загрузки может прийти после более свежего списка.
     return () => {
-      current = false;
+      isCurrent = false;
     };
   }, [loadVersion]);
 
   function reloadPosts() {
-    setError('');
-    setIsLoading(true);
+    setList((list) => ({ ...list, isLoading: true, error: '' }));
     setLoadVersion((version) => version + 1);
   }
 
