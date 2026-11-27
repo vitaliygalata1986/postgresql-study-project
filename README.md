@@ -21,7 +21,7 @@
 
 5. Из `server/` запустите `npm start` или `npm run dev` для перезапуска при изменении файлов. API доступен на `http://localhost:3000`. При успешном подключении к базе появится сообщение `Connected to PostgreSQL`.
 
-6. Чтобы открыть веб-интерфейс, в другом терминале запустите клиент по [инструкции в client/README.md](client/README.md#локальный-запуск).
+6. В другом терминале перейдите в `client/` и скопируйте [client/.env.example](client/.env.example) в `.env` командой `cp -n .env.example .env`. В шаблоне `POSTS_API_TARGET` указывает на локальный Express по адресу `http://127.0.0.1:3000`. Запустите веб-интерфейс по [инструкции в client/README.md](client/README.md#локальный-запуск).
 
 ## API постов
 

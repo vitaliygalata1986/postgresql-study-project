@@ -1,43 +1,38 @@
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 import { createPost } from '../api/posts';
-import { PostContext } from '../context/PostContext';
 import PostFields from './PostFields';
 
-const emptyPost = { title: '', anons: '', full_text: '' };
-
-/** Создаёт пост и сохраняет введённые значения при ошибке отправки. */
-export default function PostForm() {
-  const { canChangePosts, changePosts } = useContext(PostContext);
-  const [draft, setDraft] = useState(emptyPost);
+/** Создаёт пост и сообщает родителю о сохранении. */
+export default function PostForm({ onSaved, disabled }) {
   const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const isDisabled = disabled || isSaving;
 
   async function handleSubmit(event) {
     event.preventDefault();
+    const form = event.currentTarget;
+    const { title, anons, full_text } = Object.fromEntries(new FormData(form));
     setError('');
-    setIsSubmitting(true);
+    setIsSaving(true);
 
     try {
-      await changePosts(() => createPost({
-        title: draft.title,
-        anons: draft.anons || null,
-        full_text: draft.full_text || null,
-      }));
-      setDraft(emptyPost);
+      await createPost({ title, anons: anons || null, full_text: full_text || null });
+      form.reset();
+      onSaved();
     } catch (error) {
       setError(`Не удалось добавить пост. ${error.message}`);
     } finally {
-      setIsSubmitting(false);
+      setIsSaving(false);
     }
   }
 
   return (
-    <form className="add-post" onSubmit={handleSubmit} aria-busy={isSubmitting}>
+    <form className="add-post" onSubmit={handleSubmit} aria-busy={isSaving}>
       <h2>Новый пост</h2>
-      <PostFields draft={draft} setDraft={setDraft} disabled={!canChangePosts} />
+      <PostFields disabled={isDisabled} />
       {error && <p className="error" role="alert">{error}</p>}
-      <button type="submit" disabled={!canChangePosts}>
-        {isSubmitting ? 'Добавление…' : 'Добавить'}
+      <button type="submit" disabled={isDisabled}>
+        {isSaving ? 'Добавление…' : 'Добавить'}
       </button>
     </form>
   );

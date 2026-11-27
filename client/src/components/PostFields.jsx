@@ -1,23 +1,18 @@
-/** Показывает поля создания и редактирования с именами из контракта API. */
-export default function PostFields({ draft, setDraft, disabled }) {
-  function handleChange(event) {
-    const { name, value } = event.target;
-    setDraft((current) => ({ ...current, [name]: value }));
-  }
-
+/** Показывает поля создания или редактирования поста. */
+export default function PostFields({ post = {}, disabled }) {
   return (
     <fieldset className="post-fields" disabled={disabled}>
       <label>
         Заголовок
-        <input name="title" value={draft.title} onChange={handleChange} required />
+        <input name="title" defaultValue={post.title} required />
       </label>
       <label>
         Анонс
-        <textarea name="anons" rows={2} value={draft.anons ?? ''} onChange={handleChange} />
+        <textarea name="anons" rows={2} defaultValue={post.anons ?? ''} />
       </label>
       <label>
         Полный текст
-        <textarea name="full_text" rows={4} value={draft.full_text ?? ''} onChange={handleChange} />
+        <textarea name="full_text" rows={4} defaultValue={post.full_text ?? ''} />
       </label>
     </fieldset>
   );

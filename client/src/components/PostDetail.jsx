@@ -1,46 +1,43 @@
-import { useContext, useRef, useState } from 'react';
+import { useState } from 'react';
 import { deletePost, updatePost } from '../api/posts';
-import { PostContext } from '../context/PostContext';
 import PostFields from './PostFields';
 
-/** Отображает пост и позволяет изменить его поля или удалить запись. */
-export default function PostDetail({ post }) {
-  const { canChangePosts, changePosts } = useContext(PostContext);
-  const initialDraft = useRef(null);
-  const [draft, setDraft] = useState(null);
+/** Показывает пост и даёт редактировать или удалить его. */
+export default function PostDetail({ post, onSaved, disabled }) {
+  const [changes, setChanges] = useState(null);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const isDisabled = disabled || isSaving;
 
   function handleEdit() {
     setError('');
-    const fields = { title: post.title, anons: post.anons, full_text: post.full_text };
-    initialDraft.current = fields;
-    setDraft(fields);
+    setChanges({});
+  }
+
+  function handleChange(event) {
+    const { name, value } = event.target;
+    setChanges((current) => ({ ...current, [name]: value }));
   }
 
   function handleCancel() {
     setError('');
-    setDraft(null);
+    setChanges(null);
   }
 
   async function handleUpdate(event) {
     event.preventDefault();
-    setError('');
-
-    // Сверяем с началом редактирования, чтобы не отправить поля, которые изменились на сервере.
-    const changes = Object.fromEntries(
-      Object.entries(draft).filter(([field, value]) => value !== initialDraft.current[field]),
-    );
     if (Object.keys(changes).length === 0) {
-      setDraft(null);
+      handleCancel();
       return;
     }
 
+    setError('');
     setIsSaving(true);
 
     try {
-      await changePosts(() => updatePost(post.id, changes));
-      setDraft(null);
+      await updatePost(post.id, changes);
+      setChanges(null);
+      onSaved();
     } catch (error) {
       setError(`Не удалось сохранить изменения. ${error.message}`);
     } finally {
@@ -50,22 +47,26 @@ export default function PostDetail({ post }) {
 
   async function handleDelete() {
     setError('');
+    setIsSaving(true);
 
     try {
-      await changePosts(() => deletePost(post.id));
+      await deletePost(post.id);
+      onSaved();
     } catch (error) {
       setError(`Не удалось удалить пост. ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   }
 
   return (
     <article className="post">
       {error && <p className="error" role="alert">{error}</p>}
-      {draft ? (
-        <form className="edit-post" onSubmit={handleUpdate} aria-busy={isSaving}>
-          <PostFields draft={draft} setDraft={setDraft} disabled={!canChangePosts} />
+      {changes ? (
+        <form className="edit-post" onChange={handleChange} onSubmit={handleUpdate} aria-busy={isSaving}>
+          <PostFields post={post} disabled={isDisabled} />
           <div className="edit-post-actions">
-            <button type="submit" disabled={!canChangePosts}>
+            <button type="submit" disabled={isDisabled}>
               {isSaving ? 'Сохранение…' : 'Сохранить'}
             </button>
             <button type="button" onClick={handleCancel} disabled={isSaving}>
@@ -82,7 +83,7 @@ export default function PostDetail({ post }) {
               className="post-edit"
               aria-label="Редактировать пост"
               title="Редактировать пост"
-              disabled={!canChangePosts}
+              disabled={isDisabled}
             >
               <svg
                 width="16"
@@ -105,7 +106,7 @@ export default function PostDetail({ post }) {
               className="post-delete"
               aria-label="Удалить пост"
               title="Удалить пост"
-              disabled={!canChangePosts}
+              disabled={isDisabled}
             >
               X
             </button>
